@@ -25,6 +25,9 @@ choose `manifest.json` at the repo root.
 `npm run watch` rebuilds on change — TypeScript, the UI markup and stylesheet —
 so you only need to re-run the plugin in Figma.
 
+Plugin development needs the Figma **desktop app**; the browser version cannot
+load a local manifest. [CONTRIBUTING.md](CONTRIBUTING.md) has the fuller setup.
+
 ## Layout
 
 ```
@@ -147,6 +150,12 @@ Run `npm run check` before publishing, so `dist/` matches the source.
 
 The plugin `id` is issued by Figma and must not be edited by hand — the build
 rejects anything that is not a Figma-format id.
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the development setup, the
+conventions that are load-bearing here, and what to verify before opening a
+pull request.
 
 ## License
 
