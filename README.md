@@ -85,12 +85,21 @@ of `dist/` itself.
 
 A frame name is `feature_viewport_flow`:
 
-- **feature** — what the screen belongs to, e.g. `checkout`. Set per frame or
-  for all frames at once.
+- **feature** — what the screen belongs to, e.g. `checkout`.
 - **viewport** — one of `watch`, `mobile`, `mobile-ls`, `tablet`, `tablet-ls`,
-  `desktop`. Inferred from the frame's longest edge and orientation; override
-  per frame or globally.
-- **flow** — the specific screen, defaulting to the frame's largest text.
+  `desktop`. Inferred from the frame's longest edge and orientation.
+- **flow** — the user flow the screens belong to, e.g. `guest-checkout`.
+  Defaults to the frame's largest text.
+
+Each part can be set for every frame at once, or per frame. The intended
+workflow is to select the frames of **one user flow**, set feature and flow
+once, and rename — the per-frame cards start collapsed and exist for the
+exceptions.
+
+Setting a value on an individual frame opts that frame out of the matching
+"apply to all" value; every other frame keeps following it. Clearing an
+"apply to all" field returns each frame to its own value — for viewport, that is
+the one inferred from its dimensions.
 
 All three parts are required; the Rename button stays disabled until every
 selected frame has them. Names are lowercased and reduced to `a–z`, `0–9`, `-`

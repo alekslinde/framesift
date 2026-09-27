@@ -44,14 +44,20 @@
                    autocomplete="off" spellcheck="false">
           </div>
           <div class="field">
+            <label for="global-flow">Flow</label>
+            <input type="text" id="global-flow" placeholder="e.g. guest-checkout"
+                   autocomplete="off" spellcheck="false">
+          </div>
+          <div class="field">
             <label for="global-viewport">Viewport</label>
-            <select id="global-viewport">
-              <option value="">Keep per-frame</option>
-            </select>
+            <select id="global-viewport"></select>
           </div>
         </fieldset>
 
-        <p class="desc" id="frames-summary"></p>
+        <div class="frames-head">
+          <p class="desc" id="frames-summary"></p>
+          <button type="button" class="link-btn" id="expand-toggle" hidden></button>
+        </div>
         <ul class="frames" id="frames-list"></ul>
 
         <div class="row apply-row">
@@ -76,23 +82,26 @@
 
 <template id="frame-card-template">
   <li class="card" data-card>
-    <div class="card-head">
-      <span class="card-name" data-card-name></span>
+    <button type="button" class="card-head" data-card-toggle aria-expanded="false">
+      <span class="card-chevron" aria-hidden="true"></span>
+      <span class="card-text">
+        <span class="card-preview" data-card-preview></span>
+        <span class="card-name" data-card-name></span>
+      </span>
       <span class="card-flag" data-card-flag hidden></span>
-    </div>
-    <div class="card-preview" data-card-preview></div>
-    <div class="card-fields">
+    </button>
+    <div class="card-fields" data-card-fields hidden>
       <div class="field">
         <label data-label-for="feature">Feature</label>
         <input type="text" data-input="feature" autocomplete="off" spellcheck="false">
       </div>
       <div class="field">
-        <label data-label-for="viewport">Viewport</label>
-        <select data-input="viewport"></select>
-      </div>
-      <div class="field">
         <label data-label-for="flow">Flow</label>
         <input type="text" data-input="flow" autocomplete="off" spellcheck="false">
+      </div>
+      <div class="field">
+        <label data-label-for="viewport">Viewport</label>
+        <select data-input="viewport"></select>
       </div>
     </div>
   </li>

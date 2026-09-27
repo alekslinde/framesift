@@ -95,10 +95,16 @@ cannot be produced honestly, the UI says so and the button stays disabled.
 place. Do not reach for `innerHTML` on the frame list: it destroys the input the
 user is typing in. `setIfNotFocused` exists for this reason — respect it.
 
-**Empty is not unset.** A global override of `""` means "not set", so per-frame
-values apply. Treating empty as falsy is how "keep per-frame" became a silent
-no-op. When a global is released, commit its value into each frame's state first
-so nothing on screen changes meaning.
+**Globals are a display layer and are never written into per-frame state.** The
+"Apply to all frames" values sit *over* each frame's own, and `overridden` records
+which frames the user set explicitly so a global skips them. Committing a global
+into every frame — which an earlier version did when one frame was edited —
+destroys the inferred viewports, and "Per frame" then has nothing to restore:
+every frame reads back as whatever the global was. A frame's own value must
+always be either what the user typed for it or what the plugin inferred.
+
+**Empty is not unset.** A global of `""` means "not set", so per-frame values
+apply again. Treating empty as falsy is how "Per frame" became a silent no-op.
 
 **Errors surface.** The UI disables buttons optimistically when it posts, so
 every backend failure must report back or a step wedges permanently. Per-node

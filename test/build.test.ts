@@ -97,7 +97,7 @@ describe('minified output integrity', () => {
     // Markup is minified before inlining precisely so the whitespace-collapse
     // and `>\s+<` rewrites cannot reach into JS or CSS string literals.
     for (const literal of [
-      'Fill feature and flow for every frame',
+      'Set a feature and flow for every frame',
       'cannot be auto-named',
       'Something went wrong',
     ]) {

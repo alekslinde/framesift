@@ -178,30 +178,29 @@ describe('global overrides', () => {
     expect(h.previews().every((p) => p.startsWith('Needs feature'))).toBe(true)
   })
 
-  test('editing one frame keeps the others on the global value', () => {
+  test('editing one frame leaves the global applying to the others', () => {
     setInput(h.q<HTMLInputElement>('#global-feature'), 'checkout')
     const first = h.cards()[0].querySelector<HTMLInputElement>('[data-input="feature"]')!
     setInput(first, 'cart')
 
-    // The global no longer applies, so it must not still be displayed...
-    expect(h.q<HTMLInputElement>('#global-feature').value).toBe('')
-    // ...and the untouched frame keeps the name it already had.
+    // The global still applies to every frame the user has not touched, so it
+    // stays displayed — only the edited frame opts out.
+    expect(h.q<HTMLInputElement>('#global-feature').value).toBe('checkout')
     expect(h.previews()[0]).toBe('cart_mobile_sign-in')
     expect(h.previews()[1]).toBe('checkout_mobile_sign-in')
   })
 
-  test('editing one frame viewport keeps the others on the global value', () => {
+  test('a per-frame override survives later changes to the global', () => {
     setInput(h.q<HTMLInputElement>('#global-feature'), 'checkout')
-    setInput(h.q<HTMLSelectElement>('#global-viewport'), 'desktop', 'change')
     const firstVp = h.cards()[0].querySelector<HTMLSelectElement>('[data-input="viewport"]')!
-    setInput(firstVp, 'tablet', 'change')
+    setInput(firstVp, 'watch', 'change')
 
-    expect(h.q<HTMLSelectElement>('#global-viewport').value).toBe('')
-    expect(h.previews()[0]).toContain('_tablet_')
+    setInput(h.q<HTMLSelectElement>('#global-viewport'), 'desktop', 'change')
+    expect(h.previews()[0]).toContain('_watch_')
     expect(h.previews()[1]).toContain('_desktop_')
   })
 
-  test('"keep per-frame" viewport is not a no-op', () => {
+  test('"per frame" viewport is not a no-op', () => {
     setInput(h.q<HTMLInputElement>('#global-feature'), 'checkout')
     const viewport = h.q<HTMLSelectElement>('#global-viewport')
     setInput(viewport, 'desktop', 'change')
@@ -278,7 +277,7 @@ describe('skipped and unnameable frames', () => {
   test('components are marked and excluded from the count', () => {
     selectAndRename([frame('c1', { isComponent: true }), frame('n1')])
     expect(h.cards()[0].classList.contains('skipped')).toBe(true)
-    expect(h.q('#frames-summary').textContent).toBe('1 frame to rename')
+    expect(h.q('#frames-summary').textContent).toBe('0 of 1 frame ready')
   })
 
   test('unrepresentable text asks for a manual name rather than guessing', () => {
@@ -291,6 +290,112 @@ describe('height reporting', () => {
   test('reports a height to the host', () => {
     h.toUI({ type: 'init', frames: [frame('a')] })
     expect(h.sent.some((m) => m.type === 'resize')).toBe(true)
+  })
+})
+
+describe('collapsed cards', () => {
+  test('cards start collapsed so a long selection stays scannable', () => {
+    selectAndRename([frame('a'), frame('b'), frame('c')])
+    const fields = h.cards().map((c) => c.querySelector<HTMLElement>('[data-card-fields]')!)
+    expect(fields.every((f) => f.hidden)).toBe(true)
+  })
+
+  test('the header shows the resulting name without opening the card', () => {
+    selectAndRename([frame('a')])
+    setInput(h.q<HTMLInputElement>('#global-feature'), 'checkout')
+    expect(h.previews()[0]).toBe('checkout_mobile_sign-in')
+    expect(h.cards()[0].querySelector('[data-card-fields]')!.hasAttribute('hidden')).toBe(true)
+  })
+
+  test('clicking a card header opens just that card', () => {
+    selectAndRename([frame('a'), frame('b')])
+    fire(h.cards()[0].querySelector('[data-card-toggle]')!, 'click')
+
+    const hidden = h.cards().map((c) => c.querySelector<HTMLElement>('[data-card-fields]')!.hidden)
+    expect(hidden).toEqual([false, true])
+  })
+
+  test('expand-all and collapse-all switch every card at once', () => {
+    selectAndRename([frame('a'), frame('b'), frame('c')])
+    const toggle = h.q<HTMLButtonElement>('#expand-toggle')
+    const hidden = () =>
+      h.cards().map((c) => c.querySelector<HTMLElement>('[data-card-fields]')!.hidden)
+
+    expect(toggle.textContent).toBe('Edit individually')
+    fire(toggle, 'click')
+    expect(hidden()).toEqual([false, false, false])
+    expect(toggle.textContent).toBe('Collapse all')
+    fire(toggle, 'click')
+    expect(hidden()).toEqual([true, true, true])
+  })
+
+  test('a skipped frame has nothing to open', () => {
+    selectAndRename([frame('c1', { isComponent: true })])
+    const toggle = h.cards()[0].querySelector<HTMLButtonElement>('[data-card-toggle]')!
+    expect(toggle.disabled).toBe(true)
+  })
+})
+
+describe('global flow', () => {
+  test('names a whole user flow from two fields', () => {
+    // The intended workflow: select the frames of one flow, type feature and
+    // flow once, rename — no per-frame editing at all.
+    const frames = Array.from({ length: 8 }, (_, i) => frame(`f${i}`, { contentName: '' }))
+    selectAndRename(frames)
+
+    setInput(h.q<HTMLInputElement>('#global-feature'), 'checkout')
+    setInput(h.q<HTMLInputElement>('#global-flow'), 'guest checkout')
+
+    expect(h.q<HTMLButtonElement>('#apply-btn').disabled).toBe(false)
+    expect(h.previews()[0]).toBe('checkout_mobile_guest-checkout')
+    expect(h.q('#frames-summary').textContent).toBe('8 of 8 frames ready')
+  })
+
+  test('clearing the global flow hands frames back their own', () => {
+    selectAndRename([frame('a'), frame('b')])
+    setInput(h.q<HTMLInputElement>('#global-feature'), 'checkout')
+    const flow = h.q<HTMLInputElement>('#global-flow')
+
+    setInput(flow, 'guest')
+    expect(h.previews()[0]).toContain('_guest')
+    setInput(flow, '')
+    // frame() supplies contentName 'sign-in' as the inferred flow.
+    expect(h.previews()[0]).toContain('_sign-in')
+  })
+})
+
+describe('viewport globals do not destroy inferred values', () => {
+  const mixed = () => [
+    frame('a', { inferredViewport: 'mobile' }),
+    frame('b', { inferredViewport: 'desktop' }),
+    frame('c', { inferredViewport: 'tablet' }),
+  ]
+  const viewports = () =>
+    h.cards().map((c) => c.querySelector<HTMLSelectElement>('[data-input="viewport"]')!.value)
+
+  test('applying then releasing a global restores each frame', () => {
+    selectAndRename(mixed())
+    expect(viewports()).toEqual(['mobile', 'desktop', 'tablet'])
+
+    const global = h.q<HTMLSelectElement>('#global-viewport')
+    setInput(global, 'watch', 'change')
+    expect(viewports()).toEqual(['watch', 'watch', 'watch'])
+
+    setInput(global, '', 'change')
+    expect(viewports()).toEqual(['mobile', 'desktop', 'tablet'])
+  })
+
+  test('editing one frame under a global does not freeze the rest', () => {
+    // Previously the global's value was committed into every frame on the first
+    // per-frame edit, so releasing it left them all reading "watch".
+    selectAndRename(mixed())
+    setInput(h.q<HTMLSelectElement>('#global-viewport'), 'watch', 'change')
+
+    const first = h.cards()[0].querySelector<HTMLSelectElement>('[data-input="viewport"]')!
+    setInput(first, 'mobile', 'change')
+
+    setInput(h.q<HTMLSelectElement>('#global-viewport'), '', 'change')
+    expect(viewports()).toEqual(['mobile', 'desktop', 'tablet'])
   })
 })
 

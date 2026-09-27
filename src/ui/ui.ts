@@ -51,13 +51,39 @@ function pruneFrameState(selectedIds: ReadonlySet<string>): void {
     if (!selectedIds.has(id)) nextGrace.add(id)
   }
   graceIds = nextGrace
+
+  // An override only means anything while its frame's state exists.
+  for (const set of Object.values(overridden)) {
+    for (const id of Array.from(set)) if (!frameState.has(id)) set.delete(id)
+  }
+  for (const id of Array.from(expanded)) if (!selectedIds.has(id)) expanded.delete(id)
 }
 
-/** Global overrides. `null` means "not set" — distinct from an empty string. */
-const globals: { feature: string | null; viewport: string | null } = {
+/**
+ * Values applied to every frame. `null` means "not set", which is distinct from
+ * an empty string, so clearing a field restores per-frame values rather than
+ * blanking them.
+ *
+ * These are a display layer only and are never written into `frameState`. That
+ * is what keeps "Per frame" meaningful: a frame's own value is always either
+ * what the user typed for it or what the plugin inferred, never a global that
+ * was applied and then released.
+ */
+const globals: { feature: string | null; flow: string | null; viewport: string | null } = {
   feature: null,
+  flow: null,
   viewport: null,
 }
+
+/** Frames the user has given an explicit per-frame value, which globals skip. */
+const overridden = {
+  feature: new Set<string>(),
+  flow: new Set<string>(),
+  viewport: new Set<string>(),
+}
+
+/** Frame ids whose card is expanded. Cards start collapsed. */
+const expanded = new Set<string>()
 
 const $ = <T extends HTMLElement>(id: string): T => {
   const el = document.getElementById(id)
@@ -78,7 +104,9 @@ const els = {
   step2Header: $('step2-header'),
   badge2: $('badge2'),
   globalFeature: $<HTMLInputElement>('global-feature'),
+  globalFlow: $<HTMLInputElement>('global-flow'),
   globalViewport: $<HTMLSelectElement>('global-viewport'),
+  expandToggle: $<HTMLButtonElement>('expand-toggle'),
   summary: $('frames-summary'),
   list: $<HTMLUListElement>('frames-list'),
   applyBtn: $<HTMLButtonElement>('apply-btn'),
@@ -107,39 +135,33 @@ function getState(frame: FrameInfo): FrameState {
   return st
 }
 
+type Field = 'feature' | 'flow' | 'viewport'
+
 /**
- * Stops a global override from applying, without changing what any frame shows.
- *
- * Editing one frame's field means that field is no longer uniform, so the global
- * has to be released — but simply dropping it would silently revert every other
- * frame. The current value is committed into each frame's own state first, then
- * the global and its input are cleared, so the panel never displays a value that
- * is not in effect.
+ * Marks one frame's field as explicitly set, so a global no longer applies to
+ * it. The global keeps applying to every other frame, and nothing is written
+ * into the frames it does not touch — so releasing the global later restores
+ * their own values intact.
  */
-function releaseGlobal(key: 'feature' | 'viewport'): void {
-  const value = globals[key]
-  if (value === null) return
-
-  for (const frame of state.frames) {
-    if (!isActionable(frame)) continue
-    getState(frame)[key] = value
-  }
-
-  globals[key] = null
-  if (key === 'feature') {
-    els.globalFeature.value = ''
-  } else {
-    els.globalViewport.value = ''
-  }
+function setOverride(frame: FrameInfo, key: Field, value: string): void {
+  overridden[key].add(frame.id)
+  getState(frame)[key] = value
 }
 
-/** State with global overrides applied. Globals win only where they are set. */
+/**
+ * What a frame will actually be named with: its own value where the user set
+ * one, the global where one is set, and the frame's inferred value otherwise.
+ */
 function effectiveState(frame: FrameInfo): FrameState {
   const st = getState(frame)
+  const pick = (key: Field): string => {
+    if (overridden[key].has(frame.id)) return st[key]
+    return globals[key] ?? st[key]
+  }
   return {
-    feature: globals.feature ?? st.feature,
-    viewport: globals.viewport ?? st.viewport,
-    flow: st.flow,
+    feature: pick('feature'),
+    flow: pick('flow'),
+    viewport: pick('viewport'),
   }
 }
 
@@ -207,12 +229,17 @@ function renderStep1(): void {
 
 /* ── Step 2 ──────────────────────────────────────────────────────────── */
 
-function populateViewportSelect(select: HTMLSelectElement, includeKeep: boolean): void {
+/**
+ * `keepLabel` adds a leading "not set" option. On the global select it reads
+ * "Per frame" and means each frame keeps its own value; per-frame selects always
+ * hold a concrete viewport and so get no such option.
+ */
+function populateViewportSelect(select: HTMLSelectElement, keepLabel?: string): void {
   select.textContent = ''
-  if (includeKeep) {
+  if (keepLabel) {
     const keep = document.createElement('option')
     keep.value = ''
-    keep.textContent = 'Keep per-frame'
+    keep.textContent = keepLabel
     select.append(keep)
   }
   for (const viewport of VIEWPORTS) {
@@ -232,7 +259,7 @@ function createCard(frame: FrameInfo): HTMLElement {
   card.dataset.fid = frame.id
 
   const viewportSelect = card.querySelector<HTMLSelectElement>('[data-input="viewport"]')!
-  populateViewportSelect(viewportSelect, false)
+  populateViewportSelect(viewportSelect)
 
   // Labels need ids unique per card to stay associated with their inputs.
   const labels = Array.from(card.querySelectorAll<HTMLLabelElement>('[data-label-for]'))
@@ -250,17 +277,21 @@ function createCard(frame: FrameInfo): HTMLElement {
   // 'input' keeps state current per keystroke; render() updates the preview
   // without touching the focused field, so the caret is never disturbed.
   featureInput.addEventListener('input', () => {
-    releaseGlobal('feature')
-    getState(frame).feature = featureInput.value
+    setOverride(frame, 'feature', featureInput.value)
     render()
   })
   flowInput.addEventListener('input', () => {
-    getState(frame).flow = flowInput.value
+    setOverride(frame, 'flow', flowInput.value)
     render()
   })
   viewportSelect.addEventListener('change', () => {
-    releaseGlobal('viewport')
-    getState(frame).viewport = viewportSelect.value
+    setOverride(frame, 'viewport', viewportSelect.value)
+    render()
+  })
+
+  card.querySelector<HTMLButtonElement>('[data-card-toggle]')!.addEventListener('click', () => {
+    if (expanded.has(frame.id)) expanded.delete(frame.id)
+    else expanded.add(frame.id)
     render()
   })
 
@@ -276,15 +307,17 @@ function updateCard(
   const actionable = isActionable(frame)
   card.classList.toggle('skipped', !actionable)
 
+  // The old name is secondary once a new one exists; the header leads with the
+  // result so a long list can be scanned without opening anything.
   card.querySelector('[data-card-name]')!.textContent = frame.name
 
   const flag = card.querySelector<HTMLElement>('[data-card-flag]')!
   const flagText = frame.isComponent
-    ? 'component — skipped'
+    ? 'component'
     : frame.isLocked
-      ? 'locked — skipped'
+      ? 'locked'
       : collides
-        ? 'duplicate name — numbered'
+        ? 'numbered'
         : ''
   flag.textContent = flagText
   flag.hidden = !flagText
@@ -302,6 +335,15 @@ function updateCard(
     preview.className = 'card-preview warn'
   }
 
+  const toggle = card.querySelector<HTMLButtonElement>('[data-card-toggle]')!
+  const fields = card.querySelector<HTMLElement>('[data-card-fields]')!
+  // A skipped frame has nothing to edit, so its card does not open.
+  const isOpen = actionable && expanded.has(frame.id)
+  toggle.setAttribute('aria-expanded', String(isOpen))
+  toggle.disabled = !actionable
+  fields.hidden = !isOpen
+  card.classList.toggle('open', isOpen)
+
   if (!actionable) return
 
   // Only write to a field the user is not currently editing.
@@ -313,7 +355,8 @@ function updateCard(
   setIfNotFocused(flow, eff.flow)
   if (viewport.value !== eff.viewport) viewport.value = eff.viewport
 
-  feature.placeholder = globals.feature ? 'set for all frames' : 'e.g. checkout'
+  feature.placeholder = globals.feature ?? 'e.g. checkout'
+  flow.placeholder = globals.flow ?? 'e.g. guest-checkout'
 }
 
 function setIfNotFocused(input: HTMLInputElement, value: string): void {
@@ -349,10 +392,17 @@ function renderStep2(): void {
 
   const { final, collisions } = buildNames()
   const actionable = state.frames.filter(isActionable)
+  const ready = actionable.filter((f) => final.get(f.id)).length
 
   els.summary.textContent = actionable.length
-    ? `${actionable.length} frame${actionable.length === 1 ? '' : 's'} to rename`
+    ? `${ready} of ${actionable.length} frame${actionable.length === 1 ? '' : 's'} ready`
     : 'No frames available to rename.'
+
+  // With a long selection the per-frame cards are mostly noise, so offer one
+  // control rather than making the user click thirty chevrons.
+  const anyOpen = actionable.some((f) => expanded.has(f.id))
+  els.expandToggle.hidden = actionable.length < 2
+  els.expandToggle.textContent = anyOpen ? 'Collapse all' : 'Edit individually'
 
   // Reconcile the list in place: reuse existing cards, append new ones, drop
   // the rest. Rebuilding via innerHTML would destroy the focused input.
@@ -377,17 +427,20 @@ function renderStep2(): void {
     }
   })
 
-  const ready = canApply()
-  els.applyBtn.disabled = !ready
-  els.applyHint.textContent = ready
+  const canRename = canApply()
+  els.applyBtn.disabled = !canRename
+  els.applyHint.textContent = canRename
     ? ''
     : actionable.length
-      ? 'Fill feature and flow for every frame'
+      ? 'Set a feature and flow for every frame'
       : ''
 
-  if (globals.viewport !== null && els.globalViewport.value !== globals.viewport) {
-    els.globalViewport.value = globals.viewport
-  }
+  // Globals are a display layer, so the inputs are only corrected when they have
+  // drifted — never rewritten from per-frame state.
+  const wantViewport = globals.viewport ?? ''
+  if (els.globalViewport.value !== wantViewport) els.globalViewport.value = wantViewport
+  setIfNotFocused(els.globalFeature, globals.feature ?? '')
+  setIfNotFocused(els.globalFlow, globals.flow ?? '')
 }
 
 function renderFailures(): void {
@@ -465,17 +518,32 @@ bindStepToggle(els.step2Header, () => {
 
 /* ── Globals ─────────────────────────────────────────────────────────── */
 
-els.globalFeature.addEventListener('input', () => {
-  const value = els.globalFeature.value
-  // An empty global is "unset", so per-frame values come back into effect.
-  globals.feature = value === '' ? null : value
-  render()
-})
+/**
+ * Typing in a global re-applies it to every frame that has no explicit value of
+ * its own, and clearing it ("" → null) hands those frames back their own.
+ * Frames the user edited individually keep their override either way.
+ */
+function bindGlobalText(input: HTMLInputElement, key: 'feature' | 'flow'): void {
+  input.addEventListener('input', () => {
+    globals[key] = input.value === '' ? null : input.value
+    render()
+  })
+}
 
-populateViewportSelect(els.globalViewport, true)
+bindGlobalText(els.globalFeature, 'feature')
+bindGlobalText(els.globalFlow, 'flow')
+
+populateViewportSelect(els.globalViewport, 'Per frame')
 els.globalViewport.addEventListener('change', () => {
   const value = els.globalViewport.value
   globals.viewport = value === '' ? null : (value as Viewport)
+  render()
+})
+
+els.expandToggle.addEventListener('click', () => {
+  const actionable = state.frames.filter(isActionable)
+  if (actionable.some((f) => expanded.has(f.id))) expanded.clear()
+  else for (const frame of actionable) expanded.add(frame.id)
   render()
 })
 
