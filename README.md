@@ -1,4 +1,4 @@
-# Renamely
+# FrameSift
 
 A Figma plugin that renames frames and their child layers to a consistent
 convention, in two steps:

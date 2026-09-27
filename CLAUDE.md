@@ -1,4 +1,4 @@
-# Renamely — Claude Config
+# FrameSift — Claude Config
 
 > Inherits global values from ~/.claude/CLAUDE.md
 

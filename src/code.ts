@@ -289,6 +289,6 @@ figma.ui.onmessage = async (raw: unknown) => {
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error)
     figma.ui.postMessage({ type: 'error', action: msg?.type, reason })
-    figma.notify(`Renamely: ${reason}`, { error: true })
+    figma.notify(`FrameSift: ${reason}`, { error: true })
   }
 }

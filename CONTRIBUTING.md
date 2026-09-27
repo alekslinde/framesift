@@ -1,4 +1,4 @@
-# Contributing to Renamely
+# Contributing to FrameSift
 
 Thanks for helping out. This guide covers what you need to work on the plugin
 and the few conventions that are load-bearing here.
@@ -10,7 +10,7 @@ version cannot load a plugin from a local manifest.
 
 ```bash
 git clone <this repo>
-cd renamely
+cd framesift
 npm install
 npm run build
 ```
@@ -20,7 +20,7 @@ choose `manifest.json` at the repo root. It stays imported, so you only do this
 once.
 
 While working, `npm run watch` rebuilds on every change. Figma does not hot
-reload, so re-run the plugin from **Plugins → Development → Renamely** to pick
+reload, so re-run the plugin from **Plugins → Development → FrameSift** to pick
 up a change.
 
 ## The shape of the project
