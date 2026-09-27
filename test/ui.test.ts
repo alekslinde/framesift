@@ -4,15 +4,35 @@
  * selected frame, global overrides, focus retention while typing, and surfaced
  * apply failures.
  *
- * Requires `npm run build:ui` first; `npm run check` runs it in the right order.
+ * Requires a build first; `npm test` runs one via its pretest hook.
  */
-import { readFileSync } from 'node:fs'
+import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { JSDOM } from 'jsdom'
 import { beforeEach, describe, expect, test } from 'vitest'
 import type { FrameInfo } from '../src/code'
 
 const UI_PATH = resolve(__dirname, '../dist/ui.html')
+const SRC_DIR = resolve(__dirname, '../src')
+
+/**
+ * Running vitest directly skips the pretest build, which would silently test a
+ * stale bundle and report failures that the current source has already fixed.
+ */
+function assertBuildIsCurrent(): void {
+  const built = statSync(UI_PATH).mtimeMs
+  const newest = (dir: string): number => {
+    let latest = 0
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const path = resolve(dir, entry.name)
+      latest = Math.max(latest, entry.isDirectory() ? newest(path) : statSync(path).mtimeMs)
+    }
+    return latest
+  }
+  if (newest(SRC_DIR) > built) {
+    throw new Error('dist/ui.html is older than src/ — run `npm run build` (or use `npm test`)')
+  }
+}
 
 interface Harness {
   window: JSDOM['window']
@@ -24,9 +44,10 @@ interface Harness {
 }
 
 function load(): Harness {
+  assertBuildIsCurrent()
   const html = readFileSync(UI_PATH, 'utf8')
   const script = html.match(/<script>([\s\S]*?)<\/script>/)?.[1]
-  if (!script) throw new Error('No inlined script in dist/ui.html — run `npm run build:ui`')
+  if (!script) throw new Error('No inlined script in dist/ui.html — run `npm run build`')
 
   const dom = new JSDOM(html, { runScripts: 'outside-only', pretendToBeVisual: true })
   const { window } = dom
@@ -157,6 +178,29 @@ describe('global overrides', () => {
     expect(h.previews().every((p) => p.startsWith('Needs feature'))).toBe(true)
   })
 
+  test('editing one frame keeps the others on the global value', () => {
+    setInput(h.q<HTMLInputElement>('#global-feature'), 'checkout')
+    const first = h.cards()[0].querySelector<HTMLInputElement>('[data-input="feature"]')!
+    setInput(first, 'cart')
+
+    // The global no longer applies, so it must not still be displayed...
+    expect(h.q<HTMLInputElement>('#global-feature').value).toBe('')
+    // ...and the untouched frame keeps the name it already had.
+    expect(h.previews()[0]).toBe('cart_mobile_sign-in')
+    expect(h.previews()[1]).toBe('checkout_mobile_sign-in')
+  })
+
+  test('editing one frame viewport keeps the others on the global value', () => {
+    setInput(h.q<HTMLInputElement>('#global-feature'), 'checkout')
+    setInput(h.q<HTMLSelectElement>('#global-viewport'), 'desktop', 'change')
+    const firstVp = h.cards()[0].querySelector<HTMLSelectElement>('[data-input="viewport"]')!
+    setInput(firstVp, 'tablet', 'change')
+
+    expect(h.q<HTMLSelectElement>('#global-viewport').value).toBe('')
+    expect(h.previews()[0]).toContain('_tablet_')
+    expect(h.previews()[1]).toContain('_desktop_')
+  })
+
   test('"keep per-frame" viewport is not a no-op', () => {
     setInput(h.q<HTMLInputElement>('#global-feature'), 'checkout')
     const viewport = h.q<HTMLSelectElement>('#global-viewport')
@@ -247,6 +291,59 @@ describe('height reporting', () => {
   test('reports a height to the host', () => {
     h.toUI({ type: 'init', frames: [frame('a')] })
     expect(h.sent.some((m) => m.type === 'resize')).toBe(true)
+  })
+})
+
+describe('state pruning', () => {
+  test('typed input survives one selection change without the frame', () => {
+    selectAndRename([frame('a'), frame('b')])
+    const input = h.cards()[0].querySelector<HTMLInputElement>('[data-input="feature"]')!
+    setInput(input, 'cart')
+
+    // A stray click elsewhere, then back — the typed value is still there.
+    selectAndRename([frame('z')])
+    selectAndRename([frame('a')])
+    expect(
+      h.cards()[0].querySelector<HTMLInputElement>('[data-input="feature"]')!.value,
+    ).toBe('cart')
+  })
+
+  test('is dropped after two selection changes, falling back to inferred values', () => {
+    selectAndRename([frame('a')])
+    setInput(h.cards()[0].querySelector<HTMLInputElement>('[data-input="feature"]')!, 'cart')
+
+    selectAndRename([frame('z')])
+    selectAndRename([frame('z')])
+    selectAndRename([frame('a')])
+
+    expect(
+      h.cards()[0].querySelector<HTMLInputElement>('[data-input="feature"]')!.value,
+    ).toBe('')
+  })
+})
+
+describe('backend errors', () => {
+  test('are surfaced and leave step 1 usable', () => {
+    h.toUI({ type: 'init', frames: [frame('a')] })
+    fire(h.q('#rename-layers-btn'), 'click')
+    expect(h.q<HTMLButtonElement>('#rename-layers-btn').disabled).toBe(true)
+
+    h.toUI({ type: 'error', action: 'rename-layers', reason: 'Node not found' })
+
+    expect(h.q('#failures').hidden).toBe(false)
+    expect(h.q('#failures-list').textContent).toContain('Node not found')
+    // The button was disabled optimistically; an error must not wedge it.
+    expect(h.q<HTMLButtonElement>('#rename-layers-btn').disabled).toBe(false)
+  })
+
+  test('clear when the action is retried', () => {
+    h.toUI({ type: 'init', frames: [frame('a')] })
+    h.toUI({ type: 'error', reason: 'Node not found' })
+    expect(h.q('#failures').hidden).toBe(false)
+
+    fire(h.q('#rename-layers-btn'), 'click')
+    h.toUI({ type: 'layers-renamed', count: 4 })
+    expect(h.q('#failures').hidden).toBe(true)
   })
 })
 

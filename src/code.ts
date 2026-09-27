@@ -1,5 +1,11 @@
-import { classify, isGenerated, markGenerated, MAX_RENAME_DEPTH } from './classify'
+import { classify, isGenerated, markGenerated } from './classify'
 import { isUnrepresentable, toKebab } from './naming'
+import {
+  countRenamable,
+  isComponentType,
+  isNodeLocked,
+  walkRenamable,
+} from './traverse'
 import { inferViewport, type Viewport } from './viewport'
 
 /** Replaced at build time with the version from package.json. */
@@ -30,14 +36,6 @@ type UIMessage =
   | { type: 'rename-layers' }
   | { type: 'apply'; renames: Array<{ id: string; newName: string }> }
 
-function isComponentType(type: string): boolean {
-  return type === 'COMPONENT' || type === 'COMPONENT_SET' || type === 'INSTANCE'
-}
-
-function isNodeLocked(node: SceneNode): boolean {
-  return 'locked' in node && node.locked === true
-}
-
 function hasImageFill(node: SceneNode): boolean {
   if (!('fills' in node) || !Array.isArray(node.fills)) return false
   return (node.fills as ReadonlyArray<Paint>).some((f) => f.type === 'IMAGE')
@@ -45,11 +43,6 @@ function hasImageFill(node: SceneNode): boolean {
 
 function childrenOf(node: SceneNode): readonly SceneNode[] {
   return 'children' in node ? node.children : []
-}
-
-/** Nodes this plugin will not touch: components, instances, and locked layers. */
-function isProtected(node: SceneNode): boolean {
-  return isComponentType(node.type) || isNodeLocked(node)
 }
 
 function inferContainerRole(node: SceneNode): string {
@@ -129,42 +122,16 @@ function findHeadlineText(node: SceneNode): string {
   return best
 }
 
-/**
- * Walks a frame's descendants to the rename depth limit, invoking `visit` on
- * each node that would be renamed. Counting and renaming share this traversal
- * so the previewed count always matches what apply does — including the shared
- * `seen` set, which keeps an overlapping selection from double-counting.
- */
-function walkRenamable(
-  roots: readonly SceneNode[],
-  seen: Set<string>,
-  visit: (node: SceneNode) => void,
-): void {
-  const descend = (node: SceneNode, depth: number): void => {
-    if (depth >= MAX_RENAME_DEPTH) return
-    for (const child of childrenOf(node)) {
-      if (seen.has(child.id)) continue
-      seen.add(child.id)
-      if (isProtected(child)) continue
-      visit(child)
-      if (child.type !== 'INSTANCE') descend(child, depth + 1)
-    }
-  }
-  for (const root of roots) descend(root, 0)
-}
-
 function buildFrameInfo(node: SceneNode, seen: Set<string>): FrameInfo {
   const isComponent = isComponentType(node.type)
   const isLocked = isNodeLocked(node)
   const width = 'width' in node ? node.width : 0
   const height = 'height' in node ? node.height : 0
 
-  let renamableLayerCount = 0
-  if (!isComponent && !isLocked) {
-    walkRenamable([node], seen, () => {
-      renamableLayerCount += 1
-    })
-  }
+  // No guard here: walkRenamable skips protected roots itself, so this count and
+  // the rename pass mark the same nodes in the shared `seen` set and cannot
+  // disagree about the remaining depth budget for an overlapping selection.
+  const renamableLayerCount = countRenamable([node], seen)
 
   const headline = findHeadlineText(node)
   const source = headline || node.name
@@ -208,22 +175,33 @@ function postSelection(type: 'init' | 'selection-change'): void {
   })
 }
 
-function renameLayers(): number {
+function renameLayers(): { count: number; skipped: number } {
   const seen = new Set<string>()
   const targets: SceneNode[] = []
   walkRenamable(figma.currentPage.selection, seen, (node) => targets.push(node))
 
   let count = 0
+  let skipped = 0
   for (const node of targets) {
-    const slot = slotForNode(node)
-    // classify returns generated names unchanged; don't re-prefix them.
-    const next = isGenerated(slot) ? slot : markGenerated(slot)
-    if (node.name !== next) {
-      node.name = next
+    // A node can be removed between this snapshot and the write, which makes
+    // every property access throw. One bad node must not abandon the rest.
+    try {
+      if (node.removed) {
+        skipped += 1
+        continue
+      }
+      const slot = slotForNode(node)
+      // classify returns generated names unchanged; don't re-prefix them.
+      const next = isGenerated(slot) ? slot : markGenerated(slot)
+      if (node.name !== next) {
+        node.name = next
+      }
+      count += 1
+    } catch {
+      skipped += 1
     }
-    count += 1
   }
-  return count
+  return { count, skipped }
 }
 
 async function applyRenames(
@@ -269,9 +247,7 @@ figma.showUI(__html__, { width: UI_WIDTH, height: 520, themeColors: true })
 
 figma.on('selectionchange', () => postSelection('selection-change'))
 
-figma.ui.onmessage = async (raw: unknown) => {
-  const msg = raw as UIMessage
-
+async function handleMessage(msg: UIMessage): Promise<void> {
   switch (msg.type) {
     case 'ready':
       postSelection('init')
@@ -284,9 +260,10 @@ figma.ui.onmessage = async (raw: unknown) => {
     }
 
     case 'rename-layers': {
-      const count = renameLayers()
+      const { count, skipped } = renameLayers()
       figma.ui.postMessage({ type: 'layers-renamed', count })
-      figma.notify(`Renamed ${count} layer${count === 1 ? '' : 's'}`)
+      const suffix = skipped ? `, ${skipped} skipped` : ''
+      figma.notify(`Renamed ${count} layer${count === 1 ? '' : 's'}${suffix}`)
       return
     }
 
@@ -297,5 +274,21 @@ figma.ui.onmessage = async (raw: unknown) => {
       figma.notify(`Renamed ${count} frame${count === 1 ? '' : 's'}${suffix}`)
       return
     }
+  }
+}
+
+/**
+ * The UI disables its buttons optimistically when it posts, so an unreported
+ * throw here would leave a step permanently stuck. Every failure is surfaced to
+ * the panel and the canvas instead.
+ */
+figma.ui.onmessage = async (raw: unknown) => {
+  const msg = raw as UIMessage
+  try {
+    await handleMessage(msg)
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error)
+    figma.ui.postMessage({ type: 'error', action: msg?.type, reason })
+    figma.notify(`Renamely: ${reason}`, { error: true })
   }
 }

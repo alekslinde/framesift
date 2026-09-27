@@ -9,11 +9,13 @@ interface FrameState {
 }
 
 interface PluginMessage {
-  type: 'init' | 'selection-change' | 'layers-renamed' | 'apply-done'
+  type: 'init' | 'selection-change' | 'layers-renamed' | 'apply-done' | 'error'
   frames?: FrameInfo[]
   count?: number
   failures?: Array<{ id: string; reason: string }>
   version?: string
+  reason?: string
+  action?: string
 }
 
 const state = {
@@ -22,14 +24,34 @@ const state = {
   step1Open: true,
   step2Open: false,
   lastApply: null as { count: number; failures: Array<{ id: string; reason: string }> } | null,
+  lastError: null as string | null,
 }
 
 /**
  * Per-frame input, keyed by node id and persisted across selection changes so a
- * stray canvas click cannot discard what the user typed. Entries are pruned
- * only when a frame has been absent from the selection for a full cycle.
+ * stray canvas click cannot discard what the user typed.
+ *
+ * Entries survive one selection change without the frame, then are dropped — so
+ * reselecting a frame much later starts from its freshly inferred values rather
+ * than something typed long ago, and the map cannot grow for the whole session.
  */
 const frameState = new Map<string, FrameState>()
+
+/** Ids absent from the current selection but whose state is kept one more cycle. */
+let graceIds = new Set<string>()
+
+function pruneFrameState(selectedIds: ReadonlySet<string>): void {
+  for (const id of Array.from(frameState.keys())) {
+    if (selectedIds.has(id)) continue
+    // Absent for a second consecutive cycle: drop it.
+    if (graceIds.has(id)) frameState.delete(id)
+  }
+  const nextGrace = new Set<string>()
+  for (const id of frameState.keys()) {
+    if (!selectedIds.has(id)) nextGrace.add(id)
+  }
+  graceIds = nextGrace
+}
 
 /** Global overrides. `null` means "not set" — distinct from an empty string. */
 const globals: { feature: string | null; viewport: string | null } = {
@@ -83,6 +105,32 @@ function getState(frame: FrameInfo): FrameState {
     frameState.set(frame.id, st)
   }
   return st
+}
+
+/**
+ * Stops a global override from applying, without changing what any frame shows.
+ *
+ * Editing one frame's field means that field is no longer uniform, so the global
+ * has to be released — but simply dropping it would silently revert every other
+ * frame. The current value is committed into each frame's own state first, then
+ * the global and its input are cleared, so the panel never displays a value that
+ * is not in effect.
+ */
+function releaseGlobal(key: 'feature' | 'viewport'): void {
+  const value = globals[key]
+  if (value === null) return
+
+  for (const frame of state.frames) {
+    if (!isActionable(frame)) continue
+    getState(frame)[key] = value
+  }
+
+  globals[key] = null
+  if (key === 'feature') {
+    els.globalFeature.value = ''
+  } else {
+    els.globalViewport.value = ''
+  }
 }
 
 /** State with global overrides applied. Globals win only where they are set. */
@@ -202,7 +250,7 @@ function createCard(frame: FrameInfo): HTMLElement {
   // 'input' keeps state current per keystroke; render() updates the preview
   // without touching the focused field, so the caret is never disturbed.
   featureInput.addEventListener('input', () => {
-    globals.feature = null
+    releaseGlobal('feature')
     getState(frame).feature = featureInput.value
     render()
   })
@@ -211,7 +259,7 @@ function createCard(frame: FrameInfo): HTMLElement {
     render()
   })
   viewportSelect.addEventListener('change', () => {
-    globals.viewport = null
+    releaseGlobal('viewport')
     getState(frame).viewport = viewportSelect.value
     render()
   })
@@ -343,6 +391,16 @@ function renderStep2(): void {
 }
 
 function renderFailures(): void {
+  if (state.lastError) {
+    els.failures.hidden = false
+    els.failuresTitle.textContent = 'Something went wrong'
+    els.failuresList.textContent = ''
+    const li = document.createElement('li')
+    li.textContent = state.lastError
+    els.failuresList.append(li)
+    return
+  }
+
   const result = state.lastApply
   if (!result || !result.failures.length) {
     els.failures.hidden = true
@@ -424,6 +482,7 @@ els.globalViewport.addEventListener('change', () => {
 /* ── Actions ─────────────────────────────────────────────────────────── */
 
 els.renameBtn.addEventListener('click', () => {
+  state.lastError = null
   els.renameBtn.disabled = true
   post({ type: 'rename-layers' })
 })
@@ -436,6 +495,7 @@ els.applyBtn.addEventListener('click', () => {
     if (isActionable(frame) && name) renames.push({ id: frame.id, newName: name })
   }
   if (!renames.length) return
+  state.lastError = null
   els.applyBtn.disabled = true
   post({ type: 'apply', renames })
 })
@@ -457,11 +517,13 @@ function onFrames(frames: FrameInfo[]): void {
 
   // Seed state for new frames; existing entries keep whatever the user typed.
   for (const frame of frames) getState(frame)
+  pruneFrameState(new Set(frames.map((f) => f.id)))
 
   // A selection change means the previous run's results no longer describe
   // what is selected, so step 1 must be redone — but typed input survives.
   state.layersRenamed = false
   state.lastApply = null
+  state.lastError = null
   state.step2Open = false
   state.step1Open = true
   applyStepOpen()
@@ -492,6 +554,13 @@ window.onmessage = (event: MessageEvent) => {
 
     case 'apply-done':
       state.lastApply = { count: msg.count ?? 0, failures: msg.failures ?? [] }
+      render()
+      return
+
+    case 'error':
+      // Buttons are disabled optimistically on post, so render() must run to
+      // restore them from actual state rather than leaving the step stuck.
+      state.lastError = msg.reason ?? 'Something went wrong'
       render()
       return
   }

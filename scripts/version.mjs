@@ -84,21 +84,30 @@ const updated = pkgText.replace(
   (_, before, after) => `${before}${to}${after}`,
 )
 if (updated === pkgText) fail('could not find a version field to update in package.json')
-await writeFile(pkgPath, updated, 'utf8')
 
-// Keep package-lock's top-level version in step, when it is present.
+// Read and rewrite the lockfile before touching package.json, so a failure
+// leaves nothing half-applied. Only files that actually changed get staged —
+// staging a path that does not exist would abort after the rewrite, leaving a
+// dirty tree with no commit and a clean-tree check blocking the retry.
 const lockPath = p('package-lock.json')
+let lockOut = null
 try {
-  const lockText = await readFile(lockPath, 'utf8')
-  const lock = JSON.parse(lockText)
+  const lock = JSON.parse(await readFile(lockPath, 'utf8'))
   lock.version = to
   if (lock.packages?.['']) lock.packages[''].version = to
-  await writeFile(lockPath, `${JSON.stringify(lock, null, 2)}\n`, 'utf8')
+  lockOut = `${JSON.stringify(lock, null, 2)}\n`
 } catch (error) {
   if (error.code !== 'ENOENT') throw error
 }
 
-await git('add', 'package.json', 'package-lock.json')
+const staged = ['package.json']
+await writeFile(pkgPath, updated, 'utf8')
+if (lockOut !== null) {
+  await writeFile(lockPath, lockOut, 'utf8')
+  staged.push('package-lock.json')
+}
+
+await git('add', ...staged)
 await git('commit', '-m', `chore(release): ${to}`)
 await git('tag', '-a', tag, '-m', tag)
 

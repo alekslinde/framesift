@@ -59,6 +59,35 @@ describe('dist/ui.html', () => {
   })
 })
 
+describe('minified output integrity', () => {
+  const html = read('dist/ui.html')
+  const script = html.match(/<script>([\s\S]*?)<\/script>/)?.[1] ?? ''
+
+  test('the inlined script is syntactically valid', () => {
+    // The original UI shipped broken because nothing checked this.
+    expect(script.length).toBeGreaterThan(0)
+    expect(() => new Function(script)).not.toThrow()
+  })
+
+  test('string literals survive HTML minification intact', () => {
+    // Markup is minified before inlining precisely so the whitespace-collapse
+    // and `>\s+<` rewrites cannot reach into JS or CSS string literals.
+    for (const literal of [
+      'Fill feature and flow for every frame',
+      'cannot be auto-named',
+      'Something went wrong',
+    ]) {
+      expect(script).toContain(literal)
+    }
+  })
+
+  test('the stylesheet is inlined and non-trivial', () => {
+    const style = html.match(/<style>([\s\S]*?)<\/style>/)?.[1] ?? ''
+    expect(style.length).toBeGreaterThan(100)
+    expect(style).toContain('--figma-color-bg')
+  })
+})
+
 describe('dist/code.js', () => {
   const code = read('dist/code.js')
 

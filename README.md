@@ -31,8 +31,9 @@ stylesheet, and the manifest — so you only need to re-run the plugin in Figma.
 src/
   classify.ts     layer → slot-name classification
   naming.ts       slug sanitising, frame-name assembly, collision resolution
+  traverse.ts     which layers get renamed, and how deep
   viewport.ts     frame dimensions → viewport label
-  code.ts         plugin backend: messaging, traversal, apply
+  code.ts         plugin backend: messaging and apply
   ui/             panel markup, styles, and logic
 scripts/
   build.mjs       bundles, minifies, and emits dist/
@@ -40,8 +41,14 @@ scripts/
 test/             unit tests, plus jsdom tests that drive the built UI
 ```
 
-The pure modules (`classify`, `naming`, `viewport`) hold the logic worth testing
-and have no dependency on the Figma API, so they run under plain Node.
+The pure modules (`classify`, `naming`, `traverse`, `viewport`) hold the logic
+worth testing and have no dependency on the Figma API, so they run under plain
+Node. `traverse` is typed structurally, so tests supply plain objects in place of
+Figma nodes.
+
+Both the previewed layer count and the rename itself go through
+`walkRenamable`, sharing one visited-set, so the number the panel promises cannot
+drift from what actually gets renamed.
 
 ## Build
 

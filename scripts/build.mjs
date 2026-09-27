@@ -76,13 +76,19 @@ async function buildUI() {
   const safeScript = script.replace(/<\/script>/gi, '<\\/script>')
   const style = minify ? minifyCss(css) : css
 
-  const out = html
-    .replace('<!--STYLES-->', `<style>${minify ? '' : '\n'}${style}${minify ? '' : '\n'}</style>`)
-    .replace('<!--SCRIPT-->', `<script>${minify ? '' : '\n'}${safeScript}${minify ? '' : '\n'}</script>`)
+  // Markup is minified BEFORE the script and stylesheet are inlined, so those
+  // regexes only ever see hand-written HTML. Running them over the finished
+  // document would let a `> <` or a double space inside a JS or CSS string
+  // literal be rewritten, corrupting the bundle.
+  const shell = minify ? minifyHtml(html) : html
+  const pad = minify ? '' : '\n'
 
-  const final = minify ? minifyHtml(out) : out
-  await writeFile(p('dist/ui.html'), final, 'utf8')
-  return Buffer.byteLength(final)
+  const out = shell
+    .replace('<!--STYLES-->', `<style>${pad}${style}${pad}</style>`)
+    .replace('<!--SCRIPT-->', `<script>${pad}${safeScript}${pad}</script>`)
+
+  await writeFile(p('dist/ui.html'), out, 'utf8')
+  return Buffer.byteLength(out)
 }
 
 /**
@@ -125,13 +131,14 @@ function minifyCss(css) {
 }
 
 /**
- * Collapses inter-tag whitespace and drops comments outside <style>/<script>,
- * both of which are already minified by the time this runs. Text nodes are left
- * alone apart from indentation between tags.
+ * Collapses inter-tag whitespace and drops comments from the markup shell. Runs
+ * before the script and stylesheet are inlined, so it never sees their content —
+ * the build's placeholder comments are therefore preserved, and everything else
+ * is hand-written HTML where these rewrites are safe.
  */
 function minifyHtml(html) {
   return html
-    .replace(/<!--(?!\[if)[\s\S]*?-->/g, '')
+    .replace(/<!--(?!(?:STYLES|SCRIPT)-->)[\s\S]*?-->/g, '')
     .replace(/>\s+</g, '><')
     .replace(/\s{2,}/g, ' ')
     .trim()
