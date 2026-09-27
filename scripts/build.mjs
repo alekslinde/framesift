@@ -92,15 +92,11 @@ async function buildUI() {
 }
 
 /**
- * Emits dist/manifest.json from the root manifest, with main/ui rewritten to
- * sit beside it.
- *
- * Nothing else is added: Figma validates the manifest against a closed schema
- * and refuses to import one carrying any property it does not recognise. The
- * build version reaches the plugin through __PLUGIN_VERSION__ in the bundle
- * instead, which is where the panel footer reads it from.
+ * Checks that the committed manifest still points at what the build emits.
+ * The manifest itself is hand-maintained at the repo root and not copied or
+ * generated — Figma imports that file directly.
  */
-async function buildManifest() {
+async function checkManifest() {
   const manifest = JSON.parse(await readFile(p('manifest.json'), 'utf8'))
 
   for (const [key, expected] of [['main', 'dist/code.js'], ['ui', 'dist/ui.html']]) {
@@ -108,16 +104,6 @@ async function buildManifest() {
       throw new Error(`manifest.json "${key}" should be "${expected}", found "${manifest[key]}"`)
     }
   }
-
-  const out = {
-    ...manifest,
-    main: 'code.js',
-    ui: 'ui.html',
-  }
-
-  const text = `${JSON.stringify(out, null, 2)}\n`
-  await writeFile(p('dist/manifest.json'), text, 'utf8')
-  return Buffer.byteLength(text)
 }
 
 /**
@@ -150,15 +136,15 @@ function minifyHtml(html) {
 const kb = (bytes) => `${(bytes / 1024).toFixed(1)} kB`
 
 async function buildAll() {
+  await checkManifest()
   await rm(dist, { recursive: true, force: true })
   await mkdir(dist, { recursive: true })
-  const [code, ui, manifest] = await Promise.all([buildCode(), buildUI(), buildManifest()])
+  const [code, ui] = await Promise.all([buildCode(), buildUI()])
   const mode = minify ? 'production' : 'development'
   console.log(
     `dist/ (${mode}, v${pkg.version})\n` +
-      `  code.js        ${kb(code)}\n` +
-      `  ui.html        ${kb(ui)}\n` +
-      `  manifest.json  ${kb(manifest)}`,
+      `  code.js  ${kb(code)}\n` +
+      `  ui.html  ${kb(ui)}`,
   )
 }
 

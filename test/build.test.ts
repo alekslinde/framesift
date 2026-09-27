@@ -9,15 +9,16 @@ import { describe, expect, test } from 'vitest'
 const root = resolve(__dirname, '..')
 const read = (rel: string) => readFileSync(resolve(root, rel), 'utf8')
 
-const rootManifest = JSON.parse(read('manifest.json'))
-const distManifest = JSON.parse(read('dist/manifest.json'))
+const manifest = JSON.parse(read('manifest.json'))
 const pkg = JSON.parse(read('package.json'))
 
-describe('dist/manifest.json', () => {
-  test('paths resolve beside the manifest, not through dist/', () => {
-    // Figma resolves main/ui relative to the manifest's own location.
-    expect(distManifest.main).toBe('code.js')
-    expect(distManifest.ui).toBe('ui.html')
+describe('manifest.json', () => {
+  test('points at the files the build emits', () => {
+    // Figma resolves these relative to the manifest, which lives at the root.
+    expect(manifest.main).toBe('dist/code.js')
+    expect(manifest.ui).toBe('dist/ui.html')
+    expect(() => read(manifest.main)).not.toThrow()
+    expect(() => read(manifest.ui)).not.toThrow()
   })
 
   test('carries no property Figma does not recognise', () => {
@@ -45,25 +46,12 @@ describe('dist/manifest.json', () => {
       'codegenPreferences',
       'widgetApi',
     ])
-    const unexpected = Object.keys(distManifest).filter((key) => !ALLOWED.has(key))
+    const unexpected = Object.keys(manifest).filter((key) => !ALLOWED.has(key))
     expect(unexpected).toEqual([])
   })
 
-  test('adds nothing beyond the root manifest but the rewritten paths', () => {
-    expect(new Set(Object.keys(distManifest))).toEqual(new Set(Object.keys(rootManifest)))
-  })
-
-  test('preserves the identity and permissions from the root manifest', () => {
-    expect(distManifest.id).toBe(rootManifest.id)
-    expect(distManifest.name).toBe(rootManifest.name)
-    expect(distManifest.api).toBe(rootManifest.api)
-    expect(distManifest.editorType).toEqual(rootManifest.editorType)
-    expect(distManifest.documentAccess).toBe(rootManifest.documentAccess)
-    expect(distManifest.networkAccess).toEqual(rootManifest.networkAccess)
-  })
-
   test('declares no network access, matching what the plugin does', () => {
-    expect(distManifest.networkAccess.allowedDomains).toEqual(['none'])
+    expect(manifest.networkAccess.allowedDomains).toEqual(['none'])
   })
 })
 

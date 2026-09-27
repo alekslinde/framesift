@@ -127,9 +127,10 @@ Use these scopes in commit messages:
 
 - **Don't hand-edit `dist/`** — it is generated and gitignored. Change `src/` or
   `scripts/build.mjs` instead.
-- **Don't add a second `manifest.json`.** The root one is the only
-  hand-maintained copy; `scripts/build.mjs` derives `dist/manifest.json` with
-  `main`/`ui` rewritten to resolve beside it. Two copies drift.
+- **Don't generate or copy `manifest.json`.** It is a committed file at the repo
+  root and Figma imports it directly; `scripts/build.mjs` only checks that its
+  `main`/`ui` still point at what the build emits. Generating a second copy into
+  `dist/` was tried and removed — it bought nothing and added a failure mode.
 - **Don't add properties to the manifest.** Figma validates it against a closed
   schema and refuses the import on any key it does not recognise — a `version`
   field broke exactly this. Build metadata belongs in the bundle via `define`
@@ -158,7 +159,8 @@ plugin source should not see. It is a src/test split, not a backend/UI one.
 There is no lint script. `npm run check` is the gate.
 
 Load the plugin in Figma via **Plugins → Development → Import plugin from
-manifest…** and choose **`dist/manifest.json`**, not the root one.
+manifest…** and choose `manifest.json` at the repo root. Build first — it points
+into `dist/`, which is gitignored.
 
 ---
 
@@ -172,8 +174,9 @@ Figma would — it covers panel wiring that unit tests cannot reach. It fails
 loudly if `dist/` is older than `src/`, because running `vitest` directly skips
 the pretest build and would otherwise report stale failures.
 
-`test/build.test.ts` guards the shape of `dist/`: rewritten manifest paths, no
-external asset references, valid minified script, no leftover placeholders.
+`test/build.test.ts` guards the shipped artifacts: the manifest's paths and key
+set, no external asset references in the panel, valid minified script, no
+leftover placeholders.
 
 When fixing a bug, verify the new test actually catches it — revert the fix and
 confirm the test fails. Several tests here exist because that check caught a

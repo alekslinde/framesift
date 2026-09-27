@@ -20,10 +20,10 @@ npm run build
 ```
 
 Then in Figma: **Plugins → Development → Import plugin from manifest…** and
-choose `dist/manifest.json`.
+choose `manifest.json` at the repo root.
 
-`npm run watch` rebuilds everything on change — TypeScript, the UI markup and
-stylesheet, and the manifest — so you only need to re-run the plugin in Figma.
+`npm run watch` rebuilds on change — TypeScript, the UI markup and stylesheet —
+so you only need to re-run the plugin in Figma.
 
 ## Layout
 
@@ -52,17 +52,16 @@ drift from what actually gets renamed.
 
 ## Build
 
-`npm run build` writes a complete, importable plugin to `dist/`:
+`npm run build` writes the two bundles to `dist/`:
 
-| File            | Notes                                                      |
-| --------------- | ---------------------------------------------------------- |
-| `code.js`       | Bundled and minified plugin backend.                       |
-| `ui.html`       | Panel with CSS and JS inlined — Figma allows no external requests. |
-| `manifest.json` | Generated from the root manifest, with `main`/`ui` rewritten to sit beside it. Nothing else is added — Figma rejects a manifest carrying any property it does not recognise. |
+| File       | Notes                                                              |
+| ---------- | ------------------------------------------------------------------ |
+| `code.js`  | Bundled and minified plugin backend.                               |
+| `ui.html`  | Panel with CSS and JS inlined — Figma allows no external requests. |
 
-The root `manifest.json` is the only hand-maintained copy; the build derives the
-`dist/` one so the two cannot drift. `dist/` is not committed — build before
-importing or publishing.
+`manifest.json` stays at the repo root and is committed; the build only checks
+that its `main`/`ui` still point at those two files. `dist/` is not committed —
+build before importing or publishing.
 
 `npm run build:dev` skips minification and adds inline sourcemaps, which is what
 `npm run watch` uses.
@@ -135,9 +134,10 @@ so the build running in Figma is identifiable.
 `manifest.json` declares `networkAccess: none`, which is accurate — the plugin
 reads and renames layers in the open file and makes no network requests.
 
-Publish from `dist/` after `npm run check`. Note that the plugin `id` in the
-manifest is carried over from earlier development; Figma issues an id when you
-create the Community plugin, and that one needs to replace it.
+Run `npm run check` before publishing, so `dist/` matches the source. Note that
+the plugin `id` in the manifest is carried over from earlier development; Figma
+issues an id when you create the Community plugin, and that one needs to replace
+it.
 
 ## License
 
