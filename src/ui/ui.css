@@ -243,3 +243,11 @@ input[type="text"]::placeholder { color: var(--text-disabled); }
 }
 .failures-title { margin: 0 0 6px; font-weight: 600; }
 .failures ul { margin: 0; padding-left: 16px; }
+
+/* ── Version ───────────────────────────────────────────────────────── */
+.version {
+  margin: 10px 16px 0;
+  color: var(--text-disabled);
+  font-size: 10px;
+  text-align: right;
+}

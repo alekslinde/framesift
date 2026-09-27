@@ -249,3 +249,16 @@ describe('height reporting', () => {
     expect(h.sent.some((m) => m.type === 'resize')).toBe(true)
   })
 })
+
+describe('version', () => {
+  test('shows the version the plugin reports at init', () => {
+    h.toUI({ type: 'init', frames: [frame('a')], version: '1.2.3' })
+    expect(h.q('#version').hidden).toBe(false)
+    expect(h.q('#version').textContent).toBe('v1.2.3')
+  })
+
+  test('stays hidden until the plugin reports one', () => {
+    h.toUI({ type: 'selection-change', frames: [frame('a')] })
+    expect(h.q('#version').hidden).toBe(true)
+  })
+})

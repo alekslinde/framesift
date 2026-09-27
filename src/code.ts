@@ -2,6 +2,9 @@ import { classify, isGenerated, markGenerated, MAX_RENAME_DEPTH } from './classi
 import { isUnrepresentable, toKebab } from './naming'
 import { inferViewport, type Viewport } from './viewport'
 
+/** Replaced at build time with the version from package.json. */
+declare const __PLUGIN_VERSION__: string
+
 const UI_WIDTH = 400
 const UI_MIN_HEIGHT = 240
 const UI_MAX_HEIGHT = 900
@@ -198,7 +201,11 @@ function getSelectedFrames(): FrameInfo[] {
 }
 
 function postSelection(type: 'init' | 'selection-change'): void {
-  figma.ui.postMessage({ type, frames: getSelectedFrames() })
+  figma.ui.postMessage({
+    type,
+    frames: getSelectedFrames(),
+    version: type === 'init' ? __PLUGIN_VERSION__ : undefined,
+  })
 }
 
 function renameLayers(): number {

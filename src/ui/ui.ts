@@ -13,6 +13,7 @@ interface PluginMessage {
   frames?: FrameInfo[]
   count?: number
   failures?: Array<{ id: string; reason: string }>
+  version?: string
 }
 
 const state = {
@@ -64,6 +65,7 @@ const els = {
   failuresTitle: $('failures-title'),
   failuresList: $<HTMLUListElement>('failures-list'),
   cardTemplate: $<HTMLTemplateElement>('frame-card-template'),
+  version: $('version'),
 }
 
 function post(message: unknown): void {
@@ -473,6 +475,10 @@ window.onmessage = (event: MessageEvent) => {
   switch (msg.type) {
     case 'init':
     case 'selection-change':
+      if (msg.version) {
+        els.version.textContent = `v${msg.version}`
+        els.version.hidden = false
+      }
       onFrames(msg.frames ?? [])
       return
 

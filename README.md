@@ -20,40 +20,60 @@ npm run build
 ```
 
 Then in Figma: **Plugins → Development → Import plugin from manifest…** and
-choose `manifest.json`.
+choose `dist/manifest.json`.
 
-`npm run watch` rebuilds the plugin backend on change. The UI is bundled
-separately — rerun `npm run build:ui` after editing anything in `src/ui/`.
+`npm run watch` rebuilds everything on change — TypeScript, the UI markup and
+stylesheet, and the manifest — so you only need to re-run the plugin in Figma.
 
 ## Layout
 
 ```
 src/
-  classify.ts   layer → slot-name classification
-  naming.ts     slug sanitising, frame-name assembly, collision resolution
-  viewport.ts   frame dimensions → viewport label
-  code.ts       plugin backend: messaging, traversal, apply
-  ui/           panel markup, styles, and logic
+  classify.ts     layer → slot-name classification
+  naming.ts       slug sanitising, frame-name assembly, collision resolution
+  viewport.ts     frame dimensions → viewport label
+  code.ts         plugin backend: messaging, traversal, apply
+  ui/             panel markup, styles, and logic
 scripts/
-  build-ui.mjs  inlines CSS + JS into the single HTML file Figma requires
-test/           unit tests, plus a jsdom test that drives the built UI
+  build.mjs       bundles, minifies, and emits dist/
+  version.mjs     version bump + tag
+test/             unit tests, plus jsdom tests that drive the built UI
 ```
 
 The pure modules (`classify`, `naming`, `viewport`) hold the logic worth testing
 and have no dependency on the Figma API, so they run under plain Node.
 
+## Build
+
+`npm run build` writes a complete, importable plugin to `dist/`:
+
+| File            | Notes                                                      |
+| --------------- | ---------------------------------------------------------- |
+| `code.js`       | Bundled and minified plugin backend.                       |
+| `ui.html`       | Panel with CSS and JS inlined — Figma allows no external requests. |
+| `manifest.json` | Generated from the root manifest, with `main`/`ui` rewritten to sit beside it and the `package.json` version carried through. |
+
+The root `manifest.json` is the only hand-maintained copy; the build derives the
+`dist/` one so the two cannot drift. `dist/` is not committed — build before
+importing or publishing.
+
+`npm run build:dev` skips minification and adds inline sourcemaps, which is what
+`npm run watch` uses.
+
 ## Checks
 
 ```bash
-npm run check      # typecheck + build + test
-npm test           # tests only (rebuilds the UI first)
+npm run check      # typecheck + production build + tests
+npm test           # tests only (builds first)
 npm run typecheck
 ```
 
-`test/ui.test.ts` loads `dist/ui.html` in jsdom and drives it the way Figma
-would, so it covers the panel's wiring — name previews, global overrides, focus
-retention while typing, and error reporting — rather than just the pure
-functions.
+`test/ui.test.ts` loads the built `dist/ui.html` in jsdom and drives it the way
+Figma would, so it covers the panel's wiring — name previews, global overrides,
+focus retention while typing, and error reporting — rather than just the pure
+functions. It runs against the **minified production** bundle, so a build that
+breaks under minification fails the suite. `test/build.test.ts` guards the shape
+of `dist/` itself.
 
 ## Naming rules
 
@@ -75,16 +95,42 @@ dropped — the frame is flagged so you can type a name yourself.
 Layer renaming is idempotent: generated names carry a leading `_`, and a second
 pass leaves them untouched rather than reclassifying its own output.
 
+## Releasing
+
+Bump the version, which commits `package.json` and creates an annotated tag:
+
+```bash
+npm run version:patch    # 0.1.0 → 0.1.1
+npm run version:minor    # 0.1.0 → 0.2.0
+npm run version:major    # 0.1.0 → 1.0.0
+```
+
+For an exact version, or to preview without changing anything:
+
+```bash
+node scripts/version.mjs 1.4.2
+node scripts/version.mjs patch --dry-run
+```
+
+The bump refuses to run on a dirty tree, so a tag always points at a known
+state. Then:
+
+```bash
+npm run check                  # typecheck, build, test
+git push --follow-tags
+```
+
+The version appears in `dist/manifest.json` and in the panel's footer, so the
+build in Figma is identifiable.
+
 ## Publishing
 
 `manifest.json` declares `networkAccess: none`, which is accurate — the plugin
 reads and renames layers in the open file and makes no network requests.
 
-Build before publishing, since `dist/` is not committed:
-
-```bash
-npm run check
-```
+Publish from `dist/` after `npm run check`. Note that the plugin `id` in the
+manifest is carried over from earlier development; Figma issues an id when you
+create the Community plugin, and that one needs to replace it.
 
 ## License
 

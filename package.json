@@ -5,15 +5,17 @@
   "description": "Figma plugin for renaming frames and their child layers to a consistent convention.",
   "license": "Apache-2.0",
   "scripts": {
-    "build": "npm run build:code && npm run build:ui",
-    "build:code": "esbuild src/code.ts --bundle --target=es2017 --format=iife --outfile=dist/code.js",
-    "build:ui": "node scripts/build-ui.mjs",
-    "watch": "npm run build:code -- --watch",
+    "build": "node scripts/build.mjs",
+    "build:dev": "node scripts/build.mjs --dev",
+    "watch": "node scripts/build.mjs --watch",
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.test.json",
-    "pretest": "npm run build:ui",
+    "pretest": "node scripts/build.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
-    "check": "npm run typecheck && npm run build && npm run test"
+    "check": "npm run typecheck && npm run test",
+    "version:patch": "node scripts/version.mjs patch",
+    "version:minor": "node scripts/version.mjs minor",
+    "version:major": "node scripts/version.mjs major"
   },
   "devDependencies": {
     "@figma/plugin-typings": "^1.100.2",
