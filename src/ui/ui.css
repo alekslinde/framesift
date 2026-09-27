@@ -87,7 +87,8 @@ body {
 }
 .step.collapsed .chevron { transform: rotate(-45deg); }
 
-.step-body { padding: 0 16px 14px; }
+/* Top padding separates the body from its header, which is otherwise flush. */
+.step-body { padding: 10px 16px 18px; }
 .step.collapsed .step-body { display: none; }
 
 .step.locked .step-body > *:not(.lock-note) { display: none; }
@@ -95,7 +96,7 @@ body {
 
 .lock-note,
 .desc {
-  margin: 0 0 10px;
+  margin: 0 0 12px;
   color: var(--text-secondary);
 }
 .desc strong { color: var(--text); font-weight: 600; }
