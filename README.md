@@ -58,7 +58,7 @@ drift from what actually gets renamed.
 | --------------- | ---------------------------------------------------------- |
 | `code.js`       | Bundled and minified plugin backend.                       |
 | `ui.html`       | Panel with CSS and JS inlined — Figma allows no external requests. |
-| `manifest.json` | Generated from the root manifest, with `main`/`ui` rewritten to sit beside it and the `package.json` version carried through. |
+| `manifest.json` | Generated from the root manifest, with `main`/`ui` rewritten to sit beside it. Nothing else is added — Figma rejects a manifest carrying any property it does not recognise. |
 
 The root `manifest.json` is the only hand-maintained copy; the build derives the
 `dist/` one so the two cannot drift. `dist/` is not committed — build before
@@ -127,8 +127,8 @@ npm run check                  # typecheck, build, test
 git push --follow-tags
 ```
 
-The version appears in `dist/manifest.json` and in the panel's footer, so the
-build in Figma is identifiable.
+The version is compiled into the plugin bundle and shown in the panel's footer,
+so the build running in Figma is identifiable.
 
 ## Publishing
 

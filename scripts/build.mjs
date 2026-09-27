@@ -93,7 +93,12 @@ async function buildUI() {
 
 /**
  * Emits dist/manifest.json from the root manifest, with main/ui rewritten to
- * sit beside it and the package version carried through.
+ * sit beside it.
+ *
+ * Nothing else is added: Figma validates the manifest against a closed schema
+ * and refuses to import one carrying any property it does not recognise. The
+ * build version reaches the plugin through __PLUGIN_VERSION__ in the bundle
+ * instead, which is where the panel footer reads it from.
  */
 async function buildManifest() {
   const manifest = JSON.parse(await readFile(p('manifest.json'), 'utf8'))
@@ -108,8 +113,6 @@ async function buildManifest() {
     ...manifest,
     main: 'code.js',
     ui: 'ui.html',
-    // Figma shows this on the plugin's page; keep it in step with package.json.
-    version: pkg.version,
   }
 
   const text = `${JSON.stringify(out, null, 2)}\n`

@@ -20,8 +20,37 @@ describe('dist/manifest.json', () => {
     expect(distManifest.ui).toBe('ui.html')
   })
 
-  test('carries the package version', () => {
-    expect(distManifest.version).toBe(pkg.version)
+  test('carries no property Figma does not recognise', () => {
+    // Figma validates against a closed schema and refuses the import outright
+    // on an unknown key — a `version` field here is what broke it before.
+    const ALLOWED = new Set([
+      'name',
+      'id',
+      'api',
+      'main',
+      'ui',
+      'editorType',
+      'documentAccess',
+      'networkAccess',
+      'menu',
+      'parameters',
+      'parameterOnly',
+      'enableProposedApi',
+      'enablePrivatePluginApi',
+      'build',
+      'permissions',
+      'relaunchButtons',
+      'capabilities',
+      'codegenLanguages',
+      'codegenPreferences',
+      'widgetApi',
+    ])
+    const unexpected = Object.keys(distManifest).filter((key) => !ALLOWED.has(key))
+    expect(unexpected).toEqual([])
+  })
+
+  test('adds nothing beyond the root manifest but the rewritten paths', () => {
+    expect(new Set(Object.keys(distManifest))).toEqual(new Set(Object.keys(rootManifest)))
   })
 
   test('preserves the identity and permissions from the root manifest', () => {

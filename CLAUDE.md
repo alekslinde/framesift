@@ -130,6 +130,10 @@ Use these scopes in commit messages:
 - **Don't add a second `manifest.json`.** The root one is the only
   hand-maintained copy; `scripts/build.mjs` derives `dist/manifest.json` with
   `main`/`ui` rewritten to resolve beside it. Two copies drift.
+- **Don't add properties to the manifest.** Figma validates it against a closed
+  schema and refuses the import on any key it does not recognise — a `version`
+  field broke exactly this. Build metadata belongs in the bundle via `define`
+  (see `__PLUGIN_VERSION__`), not the manifest. `test/build.test.ts` enforces it.
 - **Don't commit `node_modules/` or `dist/`.**
 - **Don't add runtime dependencies** without a reason that survives scrutiny. A
   Figma plugin UI cannot fetch anything at runtime — every dependency is inlined
