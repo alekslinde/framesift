@@ -34,7 +34,20 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-#root { padding: 0 0 12px; }
+/*
+ * A full-height flex column so the version line sits at the bottom of the
+ * panel. Figma clamps the window to a minimum height, so with little content
+ * there is empty space below it that the version would otherwise float in;
+ * min-height + margin-top:auto pushes it down. With more content than fits, the
+ * column simply grows and the version flows after it as normal.
+ */
+#root {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  padding: 0 0 12px;
+  box-sizing: border-box;
+}
 
 /* ── Steps ─────────────────────────────────────────────────────────── */
 .step { border-bottom: 1px solid var(--border); }
@@ -309,7 +322,9 @@ input[type="text"]::placeholder { color: var(--text-disabled); }
 
 /* ── Version ───────────────────────────────────────────────────────── */
 .version {
-  margin: 10px 16px 0;
+  /* auto takes up the column's slack, pinning this to the bottom */
+  margin: auto 16px 0;
+  padding-top: 10px;
   color: var(--text-disabled);
   font-size: 10px;
   text-align: right;

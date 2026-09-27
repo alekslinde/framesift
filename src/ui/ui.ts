@@ -572,7 +572,21 @@ els.applyBtn.addEventListener('click', () => {
 
 let lastHeight = 0
 function reportHeight(): void {
-  const height = Math.ceil(els.root.getBoundingClientRect().height) + 2
+  // #root stretches to min-height:100vh so the version line pins to the bottom.
+  // Measuring #root — or the version itself, which auto-margin pushes down —
+  // would floor the result at the current window height, and the panel could
+  // never shrink again. Measure where the real content ends instead.
+  const top = els.root.getBoundingClientRect().top
+  let bottom = 0
+  for (const child of Array.from(els.root.children)) {
+    if (child === els.version || (child as HTMLElement).hidden) continue
+    bottom = Math.max(bottom, child.getBoundingClientRect().bottom - top)
+  }
+
+  // Leave room for the version line so it is never clipped.
+  const versionHeight = els.version.hidden ? 0 : els.version.offsetHeight + 10
+  const height = Math.ceil(bottom + versionHeight) + 12
+
   if (height === lastHeight) return
   lastHeight = height
   post({ type: 'resize', height })
