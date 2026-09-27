@@ -97,7 +97,49 @@
     </div>
   </section>
 
-  <p class="empty" id="empty-state">Select one or more frames on the canvas.</p>
+  <div class="empty" id="empty-state">
+    <svg class="empty-art" viewBox="0 0 120 64" role="img"
+         aria-label="Three frames on a canvas, one selected">
+      <rect x="1" y="9" width="30" height="46" rx="3"
+            fill="none" stroke="currentColor" stroke-width="1.5" opacity=".3"/>
+      <rect x="45" y="9" width="30" height="46" rx="3"
+            fill="none" stroke="var(--bg-brand)" stroke-width="1.5"/>
+      <rect x="49" y="15" width="22" height="7" rx="1.5" fill="var(--bg-brand)" opacity=".25"/>
+      <rect x="49" y="26" width="16" height="3" rx="1.5" fill="var(--bg-brand)" opacity=".45"/>
+      <rect x="49" y="32" width="22" height="3" rx="1.5" fill="var(--bg-brand)" opacity=".25"/>
+      <rect x="49" y="43" width="14" height="6" rx="2" fill="var(--bg-brand)" opacity=".5"/>
+      <rect x="89" y="9" width="30" height="46" rx="3"
+            fill="none" stroke="currentColor" stroke-width="1.5" opacity=".3"/>
+    </svg>
+
+    <h1 class="empty-title">Name frames and layers consistently</h1>
+    <p class="empty-lead">
+      Select the frames of one user flow to begin. Renamely works in two steps:
+    </p>
+
+    <ol class="empty-steps">
+      <li>
+        <span class="empty-step-n">1</span>
+        <span>
+          <b>Layers</b> inside each frame are renamed after what they are —
+          <code>_sign-in</code>, <code>_cta</code>, <code>_bg</code>.
+        </span>
+      </li>
+      <li>
+        <span class="empty-step-n">2</span>
+        <span>
+          <b>Frames</b> are named <code>feature_viewport_flow</code> from fields
+          you set once for the whole selection.
+        </span>
+      </li>
+    </ol>
+
+    <p class="empty-example">
+      <span class="empty-before">Frame 12</span>
+      <span class="empty-arrow" aria-hidden="true">→</span>
+      <span class="empty-after">checkout_mobile_guest-checkout</span>
+    </p>
+  </div>
 
   <p class="version" id="version" hidden></p>
 </main>

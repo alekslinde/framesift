@@ -115,12 +115,90 @@ body {
 .desc strong { color: var(--text); font-weight: 600; }
 .desc em { font-style: normal; font-family: ui-monospace, "SF Mono", Menlo, monospace; }
 
+/* ── Empty state ───────────────────────────────────────────────────── */
 .empty {
-  margin: 0;
-  padding: 24px 16px;
+  padding: 28px 20px 24px;
   color: var(--text-secondary);
+}
+.empty[hidden] { display: none; }
+
+.empty-art {
+  display: block;
+  width: 120px;
+  margin: 0 auto 18px;
+  color: var(--text-disabled);
+}
+
+.empty-title {
+  margin: 0 0 6px;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
   text-align: center;
 }
+
+.empty-lead {
+  margin: 0 0 16px;
+  text-align: center;
+  text-wrap: balance;
+}
+
+.empty-steps {
+  margin: 0 0 16px;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.empty-steps li {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+.empty-steps b { color: var(--text); font-weight: 600; }
+
+.empty-step-n {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  margin-top: 0.5px;
+  border-radius: 50%;
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  font-size: 9px;
+  font-weight: 600;
+}
+
+.empty code {
+  padding: 0 3px;
+  border-radius: 2px;
+  background: var(--bg-secondary);
+  color: var(--text);
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 10px;
+}
+
+.empty-example {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 10px;
+}
+.empty-before {
+  color: var(--text-disabled);
+  text-decoration: line-through;
+}
+.empty-arrow { color: var(--text-disabled); }
+.empty-after { color: var(--bg-brand); }
 
 /* ── Explainer ─────────────────────────────────────────────────────── */
 .explainer {

@@ -11,6 +11,7 @@ import { resolve } from 'node:path'
 import { JSDOM } from 'jsdom'
 import { beforeEach, describe, expect, test } from 'vitest'
 import type { FrameInfo } from '../src/code'
+import { composeFrameName } from '../src/naming'
 
 const UI_PATH = resolve(__dirname, '../dist/ui.html')
 const SRC_DIR = resolve(__dirname, '../src')
@@ -123,6 +124,37 @@ describe('startup', () => {
     h.toUI({ type: 'init', frames: [] })
     expect(h.q('#empty-state').hidden).toBe(false)
     expect(h.q('#step1').hidden).toBe(true)
+    expect(h.q('#step2').hidden).toBe(true)
+  })
+
+  test('the empty state explains what the plugin does', () => {
+    h.toUI({ type: 'init', frames: [] })
+    const empty = h.q('#empty-state')
+
+    // Not just an instruction: it names the outcome, both steps, and the
+    // resulting format, so the panel is legible before anything is selected.
+    expect(empty.querySelector('.empty-title')!.textContent).toBeTruthy()
+    expect(empty.querySelectorAll('.empty-steps li')).toHaveLength(2)
+    expect(empty.textContent).toContain('one user flow')
+    expect(empty.textContent).toContain('feature_viewport_flow')
+  })
+
+  test('the empty example matches the real name format', () => {
+    h.toUI({ type: 'init', frames: [] })
+    const after = h.q('#empty-state').querySelector('.empty-after')!.textContent!
+    // Must be a name composeFrameName could actually produce.
+    expect(after).toBe(
+      composeFrameName({ feature: 'checkout', viewport: 'mobile', flow: 'guest checkout' }),
+    )
+  })
+
+  test('the empty state gives way to the steps once frames are selected', () => {
+    h.toUI({ type: 'init', frames: [] })
+    expect(h.q('#empty-state').hidden).toBe(false)
+
+    h.toUI({ type: 'selection-change', frames: [frame('a')] })
+    expect(h.q('#empty-state').hidden).toBe(true)
+    expect(h.q('#step1').hidden).toBe(false)
   })
 })
 
