@@ -122,6 +122,78 @@ body {
   text-align: center;
 }
 
+/* ── Explainer ─────────────────────────────────────────────────────── */
+.explainer {
+  margin: 0 0 12px;
+  color: var(--text-secondary);
+}
+.explainer[hidden] { display: none; }
+
+.explainer summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--bg-brand);
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+}
+.explainer summary::-webkit-details-marker { display: none; }
+.explainer summary::before {
+  content: "";
+  width: 5px;
+  height: 5px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: rotate(-45deg);
+  transition: transform 120ms ease;
+}
+.explainer[open] summary::before { transform: rotate(45deg); }
+.explainer summary:hover { text-decoration: underline; }
+.explainer summary:focus-visible {
+  outline: 2px solid var(--border-brand);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+.explainer > p { margin: 8px 0 6px; }
+.explainer .note {
+  margin: 8px 0 0;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+
+.rules {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.rules li {
+  position: relative;
+  margin-bottom: 4px;
+  padding-left: 10px;
+}
+.rules li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 6px;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--text-disabled);
+}
+.rules b { color: var(--text); font-weight: 600; }
+
+.explainer code {
+  padding: 0 3px;
+  border-radius: 2px;
+  background: var(--bg-secondary);
+  color: var(--text);
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 10px;
+}
+
 /* ── Controls ──────────────────────────────────────────────────────── */
 .row {
   display: flex;

@@ -16,6 +16,28 @@
     </header>
     <div class="step-body" id="step1-body">
       <p class="desc" id="step1-desc">Select frames to begin.</p>
+
+      <details class="explainer" id="step1-explainer">
+        <summary>How layers are named</summary>
+        <p>Each layer gets a name describing what it is, worked out in order:</p>
+        <ul class="rules">
+          <li><b>Text layers</b> use their own text — “Sign in” becomes
+            <code>_sign-in</code>.</li>
+          <li><b>Image fills</b> become <code>_image</code>.</li>
+          <li><b>Recognised names</b> are kept as a role — a layer called
+            “Nav bar” becomes <code>_nav</code>.</li>
+          <li><b>Groups and frames</b> are named from what they contain —
+            an image with text becomes <code>_card</code>.</li>
+          <li><b>Anything else</b> falls back to its type —
+            a rectangle becomes <code>_bg</code>, a vector <code>_icon</code>.</li>
+        </ul>
+        <p class="note">
+          Goes three levels deep. Components, instances and locked layers are
+          never touched. The <code>_</code> prefix marks a generated name, so
+          running this again leaves them as they are.
+        </p>
+      </details>
+
       <div class="row">
         <button type="button" class="btn primary" id="rename-layers-btn" disabled>
           Rename layers

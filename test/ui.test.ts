@@ -140,6 +140,35 @@ describe('step 1', () => {
     expect(h.q('#step2').classList.contains('locked')).toBe(false)
   })
 
+  test('explains the naming rules, collapsed by default', () => {
+    h.toUI({ type: 'init', frames: [frame('a')] })
+    const explainer = h.q<HTMLDetailsElement>('#step1-explainer')
+
+    expect(explainer.hidden).toBe(false)
+    expect(explainer.open).toBe(false)
+    expect(explainer.querySelector('summary')!.textContent).toBe('How layers are named')
+    // One rule per branch of classify(): text, image, name, container, type.
+    expect(explainer.querySelectorAll('.rules li')).toHaveLength(5)
+    expect(explainer.textContent).toContain('three levels deep')
+  })
+
+  test('hides the explainer when every selected frame is skipped', () => {
+    // With no selection at all the whole step is hidden, so the case that
+    // matters is a selection the plugin cannot act on.
+    h.toUI({ type: 'init', frames: [frame('c', { isComponent: true })] })
+    expect(h.q('#step1').hidden).toBe(false)
+    expect(h.q<HTMLDetailsElement>('#step1-explainer').hidden).toBe(true)
+  })
+
+  test('collapses the explainer once the step is done', () => {
+    h.toUI({ type: 'init', frames: [frame('a')] })
+    const explainer = h.q<HTMLDetailsElement>('#step1-explainer')
+    explainer.open = true
+
+    h.toUI({ type: 'layers-renamed', count: 4 })
+    expect(explainer.open).toBe(false)
+  })
+
   test('reports when every selected frame is skipped', () => {
     h.toUI({ type: 'init', frames: [frame('a', { isComponent: true })] })
     expect(h.q('#step1-desc').textContent).toContain('components or locked')

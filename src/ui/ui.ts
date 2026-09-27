@@ -98,6 +98,7 @@ const els = {
   step1Header: $('step1-header'),
   step1Desc: $('step1-desc'),
   step1Hint: $('step1-hint'),
+  step1Explainer: $<HTMLDetailsElement>('step1-explainer'),
   renameBtn: $<HTMLButtonElement>('rename-layers-btn'),
   badge1: $('badge1'),
   step2: $('step2'),
@@ -206,6 +207,7 @@ function renderStep1(): void {
     els.renameBtn.disabled = true
     els.step1Hint.textContent = ''
     els.badge1.className = 'badge done'
+    els.step1Explainer.open = false
     return
   }
 
@@ -217,12 +219,16 @@ function renderStep1(): void {
       : 'Select frames to begin.'
     els.renameBtn.disabled = true
     els.step1Hint.textContent = ''
+    els.step1Explainer.hidden = true
     return
   }
 
+  els.step1Explainer.hidden = false
+
   els.step1Desc.innerHTML =
-    `Renames child layers in <strong>${plural(actionable.length, 'frame')}</strong> ` +
-    'to semantic slot names — <em>_label, _cta, _bg…</em>'
+    `Renames the layers inside <strong>${plural(actionable.length, 'frame')}</strong> ` +
+    'after what each one is — <em>_sign-in</em>, <em>_cta</em>, <em>_bg</em> — ' +
+    'replacing defaults like <em>Rectangle 12</em>.'
   els.renameBtn.disabled = false
   els.step1Hint.textContent = `${plural(layers, 'layer')} will be renamed`
 }
@@ -539,6 +545,10 @@ els.globalViewport.addEventListener('change', () => {
   globals.viewport = value === '' ? null : (value as Viewport)
   render()
 })
+
+// Opening the explainer changes the panel's height, which Figma only applies
+// when the UI asks for it.
+els.step1Explainer.addEventListener('toggle', () => reportHeight())
 
 els.expandToggle.addEventListener('click', () => {
   const actionable = state.frames.filter(isActionable)

@@ -85,6 +85,21 @@ describe('classify', () => {
   })
 })
 
+describe('the examples the UI promises', () => {
+  // Step 1's explainer tells the user exactly what these produce. If the
+  // classifier changes, the panel is lying — so the copy is pinned here.
+  test.each([
+    ['text layers use their own text', { type: 'TEXT', name: 'Text', textContent: 'Sign in' }, 'sign-in'],
+    ['image fills become image', { type: 'RECTANGLE', name: 'Rectangle 4', hasImageFill: true }, 'image'],
+    ['a recognised name becomes a role', { type: 'FRAME', name: 'Nav bar' }, 'nav'],
+    ['a container is named from its contents', { type: 'FRAME', name: 'Frame 9', containerRole: 'card' }, 'card'],
+    ['a rectangle falls back to bg', { type: 'RECTANGLE', name: 'Rectangle 12' }, 'bg'],
+    ['a vector falls back to icon', { type: 'VECTOR', name: 'Vector 3' }, 'icon'],
+  ])('%s', (_label, node, expected) => {
+    expect(classify(node)).toBe(expected)
+  })
+})
+
 describe('idempotence', () => {
   test('a second pass leaves generated names alone', () => {
     const first = markGenerated('text-block')
