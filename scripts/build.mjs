@@ -104,6 +104,19 @@ async function checkManifest() {
       throw new Error(`manifest.json "${key}" should be "${expected}", found "${manifest[key]}"`)
     }
   }
+
+  // A Figma plugin id is a numeric string Figma assigns — via "New plugin…" or
+  // at publish time — never something a developer makes up. Importing a
+  // manifest does not fill it in, so an empty or malformed id has to be caught
+  // here rather than at import.
+  if (!/^\d{15,25}$/.test(String(manifest.id))) {
+    throw new Error(
+      `manifest.json "id" is not a Figma plugin id (found ${JSON.stringify(manifest.id)}).\n` +
+        '  Expected a numeric string, e.g. "737805260747778092".\n' +
+        '  Get one from Figma via Plugins → Development → New plugin…, then copy\n' +
+        '  the id out of the manifest it generates.',
+    )
+  }
 }
 
 /**

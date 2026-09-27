@@ -134,10 +134,10 @@ so the build running in Figma is identifiable.
 `manifest.json` declares `networkAccess: none`, which is accurate — the plugin
 reads and renames layers in the open file and makes no network requests.
 
-Run `npm run check` before publishing, so `dist/` matches the source. Note that
-the plugin `id` in the manifest is carried over from earlier development; Figma
-issues an id when you create the Community plugin, and that one needs to replace
-it.
+Run `npm run check` before publishing, so `dist/` matches the source.
+
+The plugin `id` is issued by Figma and must not be edited by hand — the build
+rejects anything that is not a Figma-format id.
 
 ## License
 

@@ -53,6 +53,13 @@ describe('manifest.json', () => {
   test('declares no network access, matching what the plugin does', () => {
     expect(manifest.networkAccess.allowedDomains).toEqual(['none'])
   })
+
+  test('has a Figma-issued plugin id', () => {
+    // Figma assigns a numeric id when a plugin is created or published; it does
+    // not fill one in on manifest import. A UUID here means the id came from
+    // somewhere else and the plugin will not publish under it.
+    expect(manifest.id).toMatch(/^\d{15,25}$/)
+  })
 })
 
 describe('dist/ui.html', () => {

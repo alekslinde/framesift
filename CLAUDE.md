@@ -192,9 +192,11 @@ and cannot ship to the Community. Both layers were rewritten. If you see a
 `fig-*` element anywhere, it is a regression — `test/build.test.ts` checks for
 this.
 
-**Before publishing:** the plugin `id` in `manifest.json` is carried over from
-that earlier development. Figma issues a new id when you create the Community
-plugin, and it needs to replace this one.
+**The plugin `id` is Figma-issued and must not be hand-edited.** Figma assigns it
+when a plugin is created (Plugins → Development → New plugin…) or at publish
+time — never on manifest import, which only reads what is already in the file. It
+is an ~18-digit numeric string; a UUID means it came from somewhere that is not
+Figma. `scripts/build.mjs` rejects anything else.
 
 **Not yet verified in Figma.** Every check in this repo is automated. The API
 surface the backend touches — `getNodeByIdAsync`, `documentAccess:
