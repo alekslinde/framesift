@@ -1,0 +1,13 @@
+node_modules/
+dist/
+
+# Editor and OS noise
+.DS_Store
+*.swp
+.idea/
+.vscode/
+
+# Local environment overrides — never commit credentials or machine-specific paths
+.env
+.env.*
+*.local

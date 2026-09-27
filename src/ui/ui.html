@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<!--STYLES-->
+</head>
+<body>
+<main id="root">
+
+  <section class="step" id="step1">
+    <header class="step-header" id="step1-header" role="button" tabindex="0"
+            aria-expanded="true" aria-controls="step1-body">
+      <span class="badge" id="badge1" aria-hidden="true">1</span>
+      <h2 class="step-title">Rename layers</h2>
+      <span class="chevron" aria-hidden="true"></span>
+    </header>
+    <div class="step-body" id="step1-body">
+      <p class="desc" id="step1-desc">Select frames to begin.</p>
+      <div class="row">
+        <button type="button" class="btn primary" id="rename-layers-btn" disabled>
+          Rename layers
+        </button>
+        <span class="hint" id="step1-hint"></span>
+      </div>
+    </div>
+  </section>
+
+  <section class="step" id="step2">
+    <header class="step-header" id="step2-header" role="button" tabindex="0"
+            aria-expanded="false" aria-controls="step2-body">
+      <span class="badge" id="badge2" aria-hidden="true">2</span>
+      <h2 class="step-title">Rename frames</h2>
+      <span class="chevron" aria-hidden="true"></span>
+    </header>
+    <div class="step-body" id="step2-body">
+      <p class="lock-note" id="step2-lock">Finish step 1 first.</p>
+
+      <div id="step2-content">
+        <fieldset class="globals">
+          <legend>Apply to all frames</legend>
+          <div class="field">
+            <label for="global-feature">Feature</label>
+            <input type="text" id="global-feature" placeholder="e.g. checkout"
+                   autocomplete="off" spellcheck="false">
+          </div>
+          <div class="field">
+            <label for="global-viewport">Viewport</label>
+            <select id="global-viewport">
+              <option value="">Keep per-frame</option>
+            </select>
+          </div>
+        </fieldset>
+
+        <p class="desc" id="frames-summary"></p>
+        <ul class="frames" id="frames-list"></ul>
+
+        <div class="row apply-row">
+          <button type="button" class="btn primary" id="apply-btn" disabled>
+            Rename frames
+          </button>
+          <span class="hint" id="apply-hint"></span>
+        </div>
+
+        <div class="failures" id="failures" hidden>
+          <p class="failures-title" id="failures-title"></p>
+          <ul id="failures-list"></ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <p class="empty" id="empty-state">Select one or more frames on the canvas.</p>
+</main>
+
+<template id="frame-card-template">
+  <li class="card" data-card>
+    <div class="card-head">
+      <span class="card-name" data-card-name></span>
+      <span class="card-flag" data-card-flag hidden></span>
+    </div>
+    <div class="card-preview" data-card-preview></div>
+    <div class="card-fields">
+      <div class="field">
+        <label data-label-for="feature">Feature</label>
+        <input type="text" data-input="feature" autocomplete="off" spellcheck="false">
+      </div>
+      <div class="field">
+        <label data-label-for="viewport">Viewport</label>
+        <select data-input="viewport"></select>
+      </div>
+      <div class="field">
+        <label data-label-for="flow">Flow</label>
+        <input type="text" data-input="flow" autocomplete="off" spellcheck="false">
+      </div>
+    </div>
+  </li>
+</template>
+
+<!--SCRIPT-->
+</body>
+</html>

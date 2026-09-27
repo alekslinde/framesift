@@ -1,0 +1,27 @@
+{
+  "name": "renamely",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Figma plugin for renaming frames and their child layers to a consistent convention.",
+  "license": "Apache-2.0",
+  "scripts": {
+    "build": "npm run build:code && npm run build:ui",
+    "build:code": "esbuild src/code.ts --bundle --target=es2017 --format=iife --outfile=dist/code.js",
+    "build:ui": "node scripts/build-ui.mjs",
+    "watch": "npm run build:code -- --watch",
+    "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.test.json",
+    "pretest": "npm run build:ui",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "check": "npm run typecheck && npm run build && npm run test"
+  },
+  "devDependencies": {
+    "@figma/plugin-typings": "^1.100.2",
+    "@types/jsdom": "^30.0.0",
+    "@types/node": "^26.6.3",
+    "esbuild": "^0.24.0",
+    "jsdom": "^30.1.1",
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.4"
+  }
+}

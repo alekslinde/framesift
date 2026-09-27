@@ -1,0 +1,13 @@
+{
+  "name": "Renamely",
+  "id": "015329d3-4bc9-4561-9a19-50d224ade596",
+  "api": "1.0.0",
+  "main": "dist/code.js",
+  "ui": "dist/ui.html",
+  "editorType": ["figma"],
+  "documentAccess": "dynamic-page",
+  "networkAccess": {
+    "allowedDomains": ["none"],
+    "reasoning": "Renamely reads and renames layers in the open file. It sends nothing anywhere."
+  }
+}
