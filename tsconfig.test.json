@@ -1,0 +1,11 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM"],
+    // Test files import from src/, which references Figma's globals, and they
+    // also need Node and jsdom types of their own.
+    "types": ["@figma/plugin-typings", "node", "jsdom"]
+  },
+  "include": ["src/**/*.ts", "test/**/*.ts"]
+}

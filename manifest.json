@@ -1,0 +1,13 @@
+{
+  "name": "FrameSift",
+  "id": "1685918558856220278",
+  "api": "1.0.0",
+  "main": "dist/code.js",
+  "ui": "dist/ui.html",
+  "editorType": ["figma"],
+  "documentAccess": "dynamic-page",
+  "networkAccess": {
+    "allowedDomains": ["none"],
+    "reasoning": "FrameSift reads and renames layers in the open file. It sends nothing anywhere."
+  }
+}
